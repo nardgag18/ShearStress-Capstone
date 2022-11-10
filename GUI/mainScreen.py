@@ -47,36 +47,92 @@ secondEntry.place(x=415,y=60) # set the location of the button
 secondLabel = Label(win, text='seconds', font=('Arial', 30, ""))
 secondLabel.place(x=460, y=60)
 
+paused = False
+
+def pauseTest(value) :
+    global paused
+    paused = value
+
 def submit() :
+    global paused
+    resumed = False
+
+    runningWindow = Toplevel(win)
+    runningWindow.title('Operation running')
+    runningWindow.geometry(default_screen_dimensions)
+
+    # Display "Time: " to the GUI home screen
+    timeLabel = Label(runningWindow, text='Time:', font=('Arial', 30, ""))
+    timeLabel.place(x=50, y=60) # place the time label on the GUI on location (50, 60)
+
+    # set the input boxes on the GUI
+    hourEntry = Entry(runningWindow, width=2, font=('Arial', 30, ""), textvariable=hour) # save entry in hour variable
+    hourEntry.place(x=135,y=60) # set the location of the button
+
+    hourLabel = Label(runningWindow, text='hours', font=('Arial', 30, ""))
+    hourLabel.place(x=180, y=60)
+
+    minuteEntry = Entry(runningWindow, width=2, font=('Arial', 30, ""), textvariable=minute) # save entry in minute variable
+    minuteEntry.place(x=260,y=60) # set the location of the button
+
+    minuteLabel = Label(runningWindow, text='minutes', font=('Arial', 30, ""))
+    minuteLabel.place(x=305,y=60)
+
+    secondEntry = Entry(runningWindow, width=2, font=('Arial', 30, ""), textvariable=second) # save entry in second variable
+    secondEntry.place(x=415,y=60) # set the location of the button
+
+    secondLabel = Label(runningWindow, text='seconds', font=('Arial', 30, ""))
+    secondLabel.place(x=460, y=60)
+
     # function to start the timer function on home screen
     try:
-        # try the input that the user put
+        # check if the input are numbers and create a variable to count down
         temp = int(hour.get()) * 3600 + int(minute.get()) * 60 + int(second.get())
     except:
         # if try didn't work, the input was wrong. Ask for user to put in the correct fields
         print("Please input the right value (Numbers only)")
-    while temp >- 1:
-        # while the timer is greater than 0
-        mins, secs = divmod(temp, 60) # update the minutes and seconds on the GUI
-        hours = 0
-        if mins > 60: # update the hours on the GUI
-            hours, mins = divmod(mins, 60)
+    while (temp >- 1):
+        global paused
+        while not paused :
+            print("counting")
+            
+            if resumed :
+                print("destroying ")
+                resumeBtn.destroy()
+                resumed = False
 
-        # format the numbers to be printed on the GUI
-        hour.set("{0:2d}".format(hours))
-        minute.set("{0:2d}".format(mins))
-        second.set("{0:2d}".format(secs))
+            pauseBtn = Button(runningWindow, text='Pause', font=('Arial', 30, ""), command=lambda : pauseTest(True))
+            pauseBtn.place(x=310, y=200)
+            # while the timer is greater than 0
+            mins, secs = divmod(temp, 60) # update the minutes and seconds on the GUI
+            hours = 0
+            if mins > 60: # update the hours on the GUI
+                hours, mins = divmod(mins, 60)
 
-        # update the GUI
-        win.update()
+            # format the numbers to be printed on the GUI
+            hour.set("{0:2d}".format(hours))
+            minute.set("{0:2d}".format(mins))
+            second.set("{0:2d}".format(secs))
 
-        # wait
-        time.sleep(1)
+            # update the GUI
+            runningWindow.update()
 
-        if(temp == 0):
-            messagebox.showinfo("Time counting down ...", "Time's up!")
-        temp -= 1
+            # wait
+            time.sleep(1)
 
+            if(temp == 0):
+                messagebox.showinfo("Time counting down ...", "Test Complete!")
+            temp -= 1
+
+        if paused :
+            print('Paused')
+            pauseBtn.destroy()
+            resumeBtn = Button(runningWindow, text='Resume', font=('Arial', 30, ""), command=lambda : pauseTest(False))
+            resumeBtn.place(x=300, y=200)
+            runningWindow.update()
+            time.sleep(1)
+            resumed = True
+            
 def lowFlowRate() :
     # new window to get low flow rate input from user
     newWindow = Toplevel(win) # create new window variable that is a layer above the home window
