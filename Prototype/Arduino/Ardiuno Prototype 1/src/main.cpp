@@ -1,94 +1,140 @@
 #include <Arduino.h>
+//#include <string.h>
 
 #define Pump 2 // turn the pump on and off
-#define SW1 7 // turn on and off stepper motor
-#define SW2 6 // turn on and off stepper motor
-#define SW3 5 // rotate stepper motor in counter_clockwise direction
-#define SW4 4 // rotate stepper motor in clockwise direction
 
-enum Pump_Control {On = 1, Off = 0}; // pump control
-enum Motor_Control {Stop = 0, Clockwise = 1, Counter_Clockwise = 2}; // Motor control
-
-/*
-class Motor {
-  public:
-    enum Mode {Clockwise, Counter_Clockwise, Off}; 
-
-};
-*/
-
-class Button {
-  private:
-    uint8_t pinNum;
-    uint16_t state;
-
-  public:
-    void setButton(int pin) {
-      pinNum = pin;
-      state = 0;
-      pinMode(pinNum, INPUT_PULLUP);
-    }
-    bool debounce() {
-      state = (state<<1) | digitalRead(pinNum) | 0xfe00;
-      return (state = 0xfe00);
-    }
-};
+char rx_byte = 0;
 
 void controlPump(int state) {
   if(state == 1) { // turn on the pump
-    digitalWrite(Pump, HIGH);
+    //digitalWrite(Pump, HIGH);
+    Serial.println("Pump On");
   }
-  else {
-    digitalWrite(Pump, LOW);
+  if(state == 0) { // turn off the pump
+    //digitalWrite(Pump, LOW);
+    Serial.println("Pump Off");
   }
 }
 
-Button btn1;
-//Button btn2;
-//Button btn3;
-//Button btn4;
-
 void setup() {
-  // setup pinmodes for pump and stepper motor
+  Serial.begin(9600);
+  Serial.println("Serial Ready");
+
+  // setup pinmodes for pump
   pinMode(Pump, OUTPUT); // replace with pump pin when testing
-  
-  btn1.setButton(SW1);
-  //btn2.setButton(SW2);
-  //btn3.setButton(SW3);
-  //btn4.setButton(SW4);
 
   controlPump(0);
 }
 
-
+void setup_Protocol() {
+  // get number of motor steps
+  Serial.println("How many motor steps?");
+  //int steps 
+}
 
 void loop() {
   int pumpState;
   pumpState = 0;
+
   //Motor_Control motorState;
   //motorState = Stop;
   
-  // debounce switches 
-  if(!btn1.debounce()) {
-    // turn on/off pump
-    if(pumpState == 1) {
-      controlPump(0);
-      pumpState = 0;
-    }
-    if(pumpState == 0) {
-      controlPump(1);
-      pumpState = 1;
+  int GreenLightFlag = 0; // raspberry pi flag (0 = don't go)
+  int ReadyState = 0; // arduino ready state (0 = not ready)
+  
+  // do setup protocol with raspberry pi
+  Serial.println("Setup protocol completed");
+  
+  // wait for start signal
+  Serial.println("Waiting...");
+  while(GreenLightFlag != 1) {
+    if (Serial.available() > 0) {
+      rx_byte = Serial.read();
+
+      if(rx_byte == '1') {
+        GreenLightFlag = 1;
+      }
     }
   }
-  /*
-  if(btn2.debounce()) {
-    // turn on/off stepper motor
-    if(motorState != Stop) {
-      motorState = Stop;
-      
+  
+  Serial.println("Moving Motor...");
+
+  // setup motor and set it in position
+  Serial.println("Motor in position!");
+  
+  ReadyState = 1;
+  pumpState = 1;
+  controlPump(pumpState);
+
+  Serial.println("Go!");
+  
+  while(GreenLightFlag == 1 && ReadyState == 1) {
+    // GO!
+    if (Serial.available() > 0) {
+      rx_byte = Serial.read();
+
+      if ((rx_byte >= '0') && (rx_byte <= '9')) {
+        Serial.print("Number received: ");
+        Serial.println(rx_byte);
+
+        // change the value into an int
+        int c = atoi(&rx_byte);
+        Serial.println(c);
+
+        switch (c)
+        {
+        case 0:
+          // stop the operation
+          ReadyState = 0;
+          GreenLightFlag = 0;
+          Serial.println("Stopping!");
+          break;
+        case 1:
+          // turn off the pump
+          if (pumpState != 0) {
+            pumpState = 0;
+            controlPump(pumpState);
+          }
+          else {
+            Serial.println("Pump already off");
+          }
+          break;
+        case 2:
+          // turn on the pump
+          if (pumpState != 1) {
+            pumpState = 1;
+            controlPump(pumpState);
+          }
+          else {
+            Serial.println("Pump already on");
+          }
+          break;
+        default:
+          break;
+        }
+      }
+      else {
+        Serial.println("Not a number.");
+      }
     }
   }
-  */
+  Serial.println("Finished Operation!");
+    /*
+    if (Serial.available() > 0) {    // is a character available?
+      rx_byte = Serial.read();       // get the character
+    
+      // check if a number was received
+      if ((rx_byte >= '0') && (rx_byte <= '9')) {
+        Serial.print("Number received: ");
+        Serial.println(rx_byte);
+      }
+      else {
+        Serial.println("Not a number.");
+      }
+    } // end: if (Serial.available() > 0)
+    */
+      // turn on the pump
 
-
+      // begin the timer
+  //}
 }
