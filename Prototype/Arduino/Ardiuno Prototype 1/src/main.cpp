@@ -33,11 +33,11 @@ bool SensorError = false;
 void controlPump(int state) {
   if(state == 1) { // turn on the pump
     digitalWrite(Pump, HIGH);
-    Serial.println("Pump On");
+    Serial.println("> Pump On");
   }
   if(state == 0) { // turn off the pump
     digitalWrite(Pump, LOW);
-    Serial.println("Pump Off");
+    Serial.println("> Pump Off");
   }
 }
 
@@ -51,12 +51,16 @@ void DHTSensor() {
   bool stopFlag = false;
 
   pinMode(TempSensor, OUTPUT);
+  
   digitalWrite(TempSensor,HIGH);
   DelayTimer(250000); // Wait 250 milliseconds
+  
   digitalWrite(TempSensor, LOW);
   DelayTimer(30000); // Wait 30 milliseconds
+  
   digitalWrite(TempSensor, HIGH);
   DelayTimer(50);
+  
   pinMode(TempSensor, INPUT);
 
   do {
@@ -82,7 +86,7 @@ void DHTSensor() {
   for (int  j=0; j< 5; j++) {     // redo it for the 5 Bytes (40 Databits /8 = 5)
     for (int  i=0; i< 8; i++) {
       bitWrite(DHTData[j], 7-i, Result[i+2+(j*8)]);
-      }  // Create 5 Databytes from the 40 Databits (Ignoring the 2 first Databits)
+    }  // Create 5 Databytes from the 40 Databits (Ignoring the 2 first Databits)
   }
 
   // check checksum                            
@@ -97,15 +101,15 @@ void DHTSensor() {
   }
 }
 
-
 // move motor clockwise
 void Motor_StepCW() {
+  
   digitalWrite(IN1_Stepper, HIGH);
   digitalWrite(IN2_Stepper, LOW);
   digitalWrite(IN3_Stepper, LOW);
   digitalWrite(IN4_Stepper, LOW);
   DelayTimer(MotorDelay);
-
+  
   digitalWrite(IN1_Stepper, HIGH);
   digitalWrite(IN2_Stepper, HIGH);
   digitalWrite(IN3_Stepper, LOW);
@@ -129,7 +133,7 @@ void Motor_StepCW() {
   digitalWrite(IN3_Stepper, HIGH);
   digitalWrite(IN4_Stepper, LOW);
   DelayTimer(MotorDelay);
-
+  
   digitalWrite(IN1_Stepper, LOW);
   digitalWrite(IN2_Stepper, LOW);
   digitalWrite(IN3_Stepper, HIGH);
@@ -205,43 +209,14 @@ void Motor_Off() {
   digitalWrite(IN2_Stepper, LOW);
   digitalWrite(IN3_Stepper, LOW);
   digitalWrite(IN4_Stepper, LOW);
+  DelayTimer(MotorDelay);
 }
 
 void MotorStep(bool counterClockWise, int steps) {
   if(steps <= 0) {return;}
-
-  if(counterClockWise) {
-    for(int i = 0; i < steps; i++) {
-      Motor_StepCCW();
-    }
-  }
-  else {
-    for(int i = 0; i < steps; i++) {
-      Motor_StepCW();
-    }
-  }
-
+  if(counterClockWise) {for(int i = 0; i < steps; i++) {Motor_StepCCW();}}
+  else {for(int i = 0; i < steps; i++) {Motor_StepCW();}}
   Motor_Off();
-}
-
-int getMotorSteps() {
-  String inString = "";
-  bool breakFlag = false;
-  int inputSteps = 0;
-  Serial.println("GetMotorSteps");
-  // ask user how many steps to move motor
-  if (Serial.available() > 0) {
-    Serial.println("Loop");
-    int inChar = Serial.read();
-    if(isDigit(inChar)) {
-      inString += (char)inChar;
-    }
-    if(inChar == '\n') {
-      inputSteps = inString.toInt();
-      breakFlag = true;
-    }
-  }
-  return inputSteps;
 }
 
 //StepperMotor motor(true, IN1_Stepper, IN2_Stepper, IN3_Stepper, IN4_Stepper);
@@ -264,45 +239,64 @@ void setup() {
   controlPump(0);
 }
 
-void setup_Protocol() {
-   
-}
+char Buffer[50];
+char Command[5];
+char Data[20];
+int ByteCount;
+int revolution;
 
 void loop() {
+
+  long int Timer_SensorCheck = 1000000; // 1 million microseconds (1 second)
+  long int Timer_CompareSensor = 0;
+
+  int c;
+  bool checkInput = false;
+  int numberOfSteps;
+
   int pumpState;
   pumpState = 0;
   
   int GreenLightFlag = 0; // raspberry pi flag (0 = don't go)
   int ReadyState = 0; // arduino ready state (0 = not ready)
-  
+  int SensorFlag = 0; // stop using the sensor 
+
   // do setup protocol with raspberry pi
-  Serial.println("Setup protocol completed");
+  Serial.println("> Setup protocol completed");
   
-  // wait for start signal
-  Serial.println("Waiting...");
+  // wait for start signal -----  1
+  Serial.println("> Waiting...");
   while(GreenLightFlag != 1) {
     if (Serial.available() > 0) {
       rx_byte = Serial.read();
 
       if(rx_byte == '1') {
+        Serial.println("1");
         GreenLightFlag = 1;
       }
     }
   }
 
-  Serial.println("Starting Sensor...");
+  Serial.flush();
+  DelayTimer(100);
+  // -----  Operation begins ------------ //
   
+  // Test Sensor
+  SensorFlag = 0;
   DHTSensor();
   if(SensorError == false) {
+    // print sensor value
+    Serial.println("> Sensor setup complete");
     Serial.print("Humidity = "); Serial.print(Humidity); Serial.print("%   Temp. = "); Serial.print(Temperature); Serial.print(" degrees.\n");
-    Serial.println("Sensor setup complete");
   }
   else {
-    Serial.println("Sensor Error!");
+    // Show there was an error with the sensor
+    Serial.println("> Sensor Error!");
   }
-  
+
+  /*
   // setup motor and set it in position
-  Serial.println("Moving Motor...");
+  //Serial.println("Moving Motor...");
   //MotorStep(false, 500);
   /*
   while(motor.currentStep <= 50000) {
@@ -311,10 +305,10 @@ void loop() {
     motor.currentStep++;
     DelayTimer(50);
   }
-  */
+  
 
-  Serial.println("Motor in position!");
-  Serial.println("Reversing Motor!");
+  //Serial.println("Motor in position!");
+  //Serial.println("Reversing Motor!");
   //MotorStep(true, 500);
   //motor.currentStep = 0;
 
@@ -327,35 +321,61 @@ void loop() {
   }
 
   motor.currentStep = 0;
-  */
   
-  Serial.println("Reversed Motor!");
+  
+  //Serial.println("Reversed Motor!");
+  */
 
-  ReadyState = 1;
-  pumpState = 1;
+  ReadyState = 1; // slave is ready
+  pumpState = 1; // turn on the pump
   controlPump(pumpState);
 
-  Serial.println("Go!");
-  
-  String inString = "";
-  bool breakFlag = false;
-
-  long int Timer_SensorCheck = 501000; // 2.5 seconds
-  long int Timer_CompareSensor = 0;
-  int c;
-  int prevState = 0;
-  int numberOfSteps;
+  Serial.println("> Go!");
 
   while(GreenLightFlag == 1 && ReadyState == 1) {  
-    if((micros() - Timer_CompareSensor ) > Timer_SensorCheck) { // if the given time has passed...
+    // check the sensor every x amount of time. x = Timer_SensorCheck
+    if(((micros() - Timer_CompareSensor ) > Timer_SensorCheck ) && SensorFlag != 1) { // if the given time has passed...
       // check the sensor
       DHTSensor();
-      Serial.print("Humidity = "); Serial.print(Humidity); Serial.print("%   Temp. = "); Serial.print(Temperature); Serial.print(" degrees.\n");
+      Serial.print("Humidity = "); Serial.print(Humidity); Serial.print("%   Temp. = "); Serial.print(Temperature); Serial.print(" degrees C.\n");
 
       // reset the timer variable to check in 2.5 seconds
       Timer_CompareSensor = micros();
     }
-    // GO!
+    SensorFlag = 1;
+    ByteCount = -1;
+    ByteCount = Serial.readBytesUntil('\n', Buffer, sizeof(Buffer) - 1);
+    
+    if (ByteCount > 0) {
+      // parse the buffer
+      if(strstr(Buffer, ",")) { // if there is a comma in the buffer
+        strcpy(Command, strtok(Buffer, ",")); // copy first part as command
+        strcpy(Data, strtok(NULL, "\n")); // copy second part as data
+
+        Serial.print("> Command : "); Serial.print(Command); 
+        Serial.println();
+        Serial.print("> Data : "); Serial.print(Data);
+        Serial.println();
+      }
+      else { // only command sent through buffer
+        strcpy(Command, strtok(Buffer, "\n"));
+        //Serial.println(Command[0]);
+        Serial.print("> Command : "); Serial.print(Command); Serial.print('\n');
+      }
+
+      if(!isspace(Command[0])) {
+        c = atoi(Command);
+        checkInput = true;
+      }
+      else {
+        checkInput = false;
+      }
+    }
+    
+    Serial.flush();
+    DelayTimer(100);
+    SensorFlag = 0;
+    /*
     if (Serial.available() > 0) {
       rx_byte = Serial.read();
 
@@ -371,10 +391,12 @@ void loop() {
         // not a number
       }
     }
-    if(prevState != c) {
-      prevState = c;
+    */
+    
+    // Checking Serial input
+    if(checkInput) {
       switch (c) {
-        case 0:
+        case 9:
           // stop the operation
           ReadyState = 0;
           GreenLightFlag = 0;
@@ -382,35 +404,34 @@ void loop() {
           pumpState = 0;
           controlPump(pumpState);
 
-          Serial.println("Stopping!");
+          Serial.println("> Stopping!");
           break;
         case 1:
           // turn off the pump
-          if (pumpState != 0) {
-            pumpState = 0;
-            controlPump(pumpState);
-          }
-          else {
-            Serial.println("Pump already off");
-          }
+          //Serial.println("> Case 1");
+          controlPump(0);
+          DelayTimer(50);
           break;
         case 2:
           // turn on the pump
-          if (pumpState != 1) {
-            pumpState = 1;
-            controlPump(pumpState);
-          }
-          else {
-            Serial.println("Pump already on");
-          }
+          controlPump(1);
+          DelayTimer(50);
           break;
         case 3:
           // turn off the pump
           pumpState = 0;
           controlPump(pumpState);
+          DelayTimer(100);
 
-          numberOfSteps = 500;
-          //int numberOfSteps = getMotorSteps();
+          revolution = 500;
+          numberOfSteps = atoi(Data);
+
+          if(numberOfSteps <= 0) {
+            numberOfSteps = revolution;
+          }
+          else {
+            numberOfSteps = numberOfSteps * revolution;
+          }
 
           MotorStep(false, numberOfSteps);
 
@@ -422,9 +443,17 @@ void loop() {
           // turn off the pump
           pumpState = 0;
           controlPump(pumpState);
+          DelayTimer(100);
 
-          numberOfSteps = 500;
-          //int numberOfSteps = getMotorSteps();
+          revolution = 500;
+          numberOfSteps = atoi(Data);
+
+          if(numberOfSteps <= 0) {
+            numberOfSteps = revolution;
+          }
+          else {
+            numberOfSteps = numberOfSteps * revolution;
+          }
 
           MotorStep(true, numberOfSteps);
 
@@ -432,10 +461,15 @@ void loop() {
           pumpState = 1;
           controlPump(pumpState);
           break;
-        default:
-          break;
       }
+      checkInput = false;
     }
+    
+    memset(Buffer, '\0', sizeof(Buffer));
+    memset(Command, '\0', sizeof(Command));
+    memset(Data, '\0', sizeof(Data));
+    Serial.flush();
+
   }
-  Serial.println("Finished Operation!"); 
+  Serial.println("> Finished Operation!"); 
 }
