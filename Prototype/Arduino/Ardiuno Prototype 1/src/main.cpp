@@ -33,11 +33,11 @@ bool SensorError = false;
 void controlPump(int state) {
   if(state == 1) { // turn on the pump
     digitalWrite(Pump, HIGH);
-    Serial.println("> Pump On");
+    //Serial.println("> Pump On");
   }
   if(state == 0) { // turn off the pump
     digitalWrite(Pump, LOW);
-    Serial.println("> Pump Off");
+    //Serial.println("> Pump Off");
   }
 }
 
@@ -225,7 +225,7 @@ void MotorStep(bool counterClockWise, int steps) {
 
 void setup() {
   Serial.begin(9600);
-  Serial.println("Serial Ready");
+  //Serial.println("Serial Ready");
 
   // setup pinmodes for pump
   pinMode(Pump, OUTPUT); // replace with pump pin when testing
@@ -262,7 +262,7 @@ void loop() {
   int SensorFlag = 0; // stop using the sensor 
 
   // do setup protocol with raspberry pi
-  Serial.println("> Setup protocol completed");
+  //Serial.println("> Setup protocol completed");
   
   // wait for start signal -----  1
   Serial.println("> Waiting...");
@@ -271,7 +271,7 @@ void loop() {
       rx_byte = Serial.read();
 
       if(rx_byte == '1') {
-        Serial.println("1");
+        //Serial.println("1");
         GreenLightFlag = 1;
       }
     }
@@ -287,7 +287,7 @@ void loop() {
   if(SensorError == false) {
     // print sensor value
     Serial.println("> Sensor setup complete");
-    Serial.print("Humidity = "); Serial.print(Humidity); Serial.print("%   Temp. = "); Serial.print(Temperature); Serial.print(" degrees.\n");
+    //Serial.print("Humidity = "); Serial.print(Humidity); Serial.print("%   Temp. = "); Serial.print(Temperature); Serial.print(" degrees.\n");
   }
   else {
     // Show there was an error with the sensor
@@ -352,15 +352,15 @@ void loop() {
         strcpy(Command, strtok(Buffer, ",")); // copy first part as command
         strcpy(Data, strtok(NULL, "\n")); // copy second part as data
 
-        Serial.print("> Command : "); Serial.print(Command); 
-        Serial.println();
-        Serial.print("> Data : "); Serial.print(Data);
-        Serial.println();
+        //Serial.print("> Command : "); Serial.print(Command); 
+        //Serial.println();
+        //Serial.print("> Data : "); Serial.print(Data);
+        //Serial.println();
       }
       else { // only command sent through buffer
         strcpy(Command, strtok(Buffer, "\n"));
         //Serial.println(Command[0]);
-        Serial.print("> Command : "); Serial.print(Command); Serial.print('\n');
+        //Serial.print("> Command : "); Serial.print(Command); Serial.print('\n');
       }
 
       if(!isspace(Command[0])) {
@@ -392,7 +392,7 @@ void loop() {
       }
     }
     */
-    
+   
     // Checking Serial input
     if(checkInput) {
       switch (c) {
